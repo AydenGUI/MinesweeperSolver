@@ -12,8 +12,8 @@ public class Cord {
 
     @Override
     public boolean equals(Object cord) {
-        if (cord.getClass()!=this.getClass())
-            return false;
+        // if (cord.getClass()!=this.getClass())
+        //     return false;
         Cord other = (Cord) cord;
         return this.row == other.getRow() && this.col == other.getCol();
     }

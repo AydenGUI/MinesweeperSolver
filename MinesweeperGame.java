@@ -5,7 +5,6 @@ import java.util.Scanner;
 import java.util.InputMismatchException;
 import java.io.File;
 import java.io.FileNotFoundException;
-
 /**
  * Class to make a functional Minesweeper game.
  */
@@ -525,7 +524,8 @@ public class MinesweeperGame {
     public void play(Scanner stdIn) {
         this.getHelp();
         while (doContinue) {
-            this.promptUser(stdIn);
+            // this.promptUser(stdIn);
+            this.botPlays(stdIn);
             if (this.isWon()) {
                 this.printWin();
                 doContinue = false;
@@ -596,6 +596,80 @@ public class MinesweeperGame {
             System.out.println("Invalid Command: You typed " + stin);
         } // switch
     } // promptUser
+
+    public void botPlays(Scanner stdIn) {
+        int row = 0, col = 0;
+        String stin = "";
+        this.printMineField();
+        System.out.print("minesweeper-alpha: ");
+        // if (solver != null)
+        //     System.out.println("Computer Recommendation: " + solver.getMoves());
+        String command = solver.getMoves();
+        if (command.charAt(0) == '?') {
+           
+            System.out.println("Computer Best Guess: " + command.substring(1));
+            command = stdIn.nextLine(); 
+            // command = command.substring(1);
+        } else { System.out.println("Computer Move: " + command);
+        try {
+            Thread.sleep(400); // 0.4 seconds in milliseconds
+        } catch (InterruptedException e) {
+            System.err.println(e.getMessage());
+        }
+    }
+        try {
+            String[] form = format(command);
+            stin = form[0];
+            if (form[1] != null && form[2] != null) {
+                row = Integer.parseInt(form[1]);
+                col = Integer.parseInt(form[2]);
+            } // if
+            if (row < 0 || col < 0 || row >= this.rows || col >= this.cols)
+                throw new InputMismatchException("Coordinates out of range.");
+        } catch (NumberFormatException nfe) {
+            System.out.println("Invalid index");
+            stin = "a";
+        } catch (InputMismatchException ime) {
+            System.out.println(ime.getMessage());
+            stin = "a";
+        } catch (NullPointerException npe) {
+            System.out.println(npe.getMessage());
+            stin = "a";
+        } // try
+        if (stin == null) {
+            System.out.println("WTF???? Try again");
+            this.botPlays(stdIn);
+        }
+        switch (stin) {
+        case "c":  
+        System.out.println(this.solver.getClumpsAt(row, col));
+            break;
+        case "m": case "mark":
+            this.mark(row,col);
+            break;
+        case "r": case "reveal":
+            roundsCompleted ++;
+            if (this.reveal(row,col)) {
+                doContinue = false;
+            } // if
+            break;
+        case "g": case "guess":
+            this.guess(row,col);
+            break;
+        case "q": case "quit":
+            System.out.println("Quitting the game...\nBye!");
+            System.exit(0);
+            break;
+        case "h": case "help":
+            this.getHelp();
+            break;
+        case "nofog":
+            this.unfog();
+            break;
+        default:
+            System.out.println("Invalid Command: You typed " + stin);
+        } // switch
+    } // botPlays
 
     /**
      * Formats student input into an array.

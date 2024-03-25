@@ -7,6 +7,8 @@ import cs1302.game.Clump;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
 
 public class MinesweeperSolver {
     SquareStat[][] squareStats;
@@ -30,13 +32,13 @@ public class MinesweeperSolver {
             this.evaluate();
         }
         if (this.moves.size() == 0) {
-            System.out.println("CREATE CLUMPS:");
+            // System.out.println("CREATE CLUMPS:");
             this.createClumps();
-            System.out.println("CLUMP MOVE:");
+            // System.out.println("CLUMP MOVE:");
             this.evaluateClumps();
         }
         if (this.moves.size() == 0) {
-            System.out.println("RANDOM MOVE:");
+            // System.out.println("RANDOM MOVE:");
             this.bestRandom();
         }
             
@@ -81,18 +83,26 @@ public class MinesweeperSolver {
             for (SquareStat stat : squareStats[i]) {
                 if (stat != null && stat.getDoConsider()) {
                     stat.statClumps();
+                    stat.createNewClumps(this.moves);
                     stat.evaluateMyClumps(this.moves);
                 }
             }
         }
     } // evaluateClumps
 
-    //Not best yet
+    /*
+     * Creates a list of all null tiles. First it checks if any squareStats have any moves
+     * with better odds than selecting randomly from that list. It iterates over every square tile recording 
+     * the best random move so far and the odds of it hitting a mine. At the end, if the odds of that are more than
+     * randomly selecting from the list it does so.
+     */
     public void bestRandom() {
         String[][] board = minesweeperGame.getDisplay();
         double minPercent = 1.0;
         String move = "";
         List<Cord> randCords = new ArrayList<>();
+        Set<Cord> badGuess = new HashSet<>(); //Used to remove/prevent duplicates 
+        //Only issue is if badGuess is added after move is set it won't catch it
         for (int i = 0; i < board.length; i++) {
             for (int j = 0; j < board[i].length; j++) {
                 if (board[i][j] == null)
@@ -109,18 +119,54 @@ public class MinesweeperSolver {
                                 if(j + l >= 0 && j + l < board[0].length)
                                     randCords.remove(new Cord(i + k, j + l));
                                     //if the Cord doesn't exist, nothing happens
+
+                        //Here determines best chance random tile to choose
+                    if (this.squareStats[i][j]!=null) {
+                        if ((double)this.squareStats[i][j].getMines()/this.squareStats[i][j].getSquaresLeft() >= minPercent) {
+                            //is
+                            badGuess.addAll(this.squareStats[i][j].getUntouched());
+                        } else minPercent = (double)this.squareStats[i][j].getMines()/this.squareStats[i][j].getSquaresLeft();
+                    } // if
                 } // if
-                else if (this.squareStats[i][j]!=null && (double)this.squareStats[i][j].getSquaresLeft()/this.squareStats[i][j].getMines() < minPercent) {
-                    move = "r " + this.squareStats[i][j].getUntouched().get(0).toString();
-                    minPercent = (double)this.squareStats[i][j].getSquaresLeft()/this.squareStats[i][j].getMines();
-                }
+            }
+        } // for
+        //to make sure to not miss any
+        minPercent = 1.0;
+        for (int i = 0; i < board.length; i++) {
+            for (int j = 0; j < board[i].length; j++) {
+                //checks if is a numbered tile
+                if (board[i][j] != null && !board[i][j].equals("f") && !board[i][j].equals("?")) {
+                    if (this.squareStats[i][j]!=null) {
+                        if ((double)this.squareStats[i][j].getMines()/this.squareStats[i][j].getSquaresLeft() <= minPercent) {
+                            Cord untouched = this.squareStats[i][j].getUntouched().get((int) (Math.random()* this.squareStats[i][j].getSquaresLeft()));
+                            List<Cord> listOfUntouched = this.squareStats[i][j].getUntouched();
+                            listOfUntouched.remove(untouched);
+                            int x = 0;
+                            //ensures guess is not already considered "bad"
+                            while ((badGuess.contains(untouched) && listOfUntouched.size() > 0)) {
+                                // System.out.println("Loop with: " + untouched.toString());
+                                if (badGuess.contains(untouched)) {
+                                    untouched = this.squareStats[i][j].getUntouched().get((int) (Math.random()* listOfUntouched.size()));
+                                    listOfUntouched.remove(untouched);
+                                }
+                            } // while
+                            if (badGuess.contains(untouched))
+                                continue;
+                            move = "?r " + untouched.toString();
+                            minPercent = (double)this.squareStats[i][j].getMines()/this.squareStats[i][j].getSquaresLeft();
+                } else badGuess.addAll(this.squareStats[i][j].getUntouched());
+            }
             }
         }
-        System.out.println(randCords);
+    }
+        // System.out.println(randCords);
+        // System.out.println(badGuess);
         // if the odds of a nonrevealed square being a mine is less than any other known square, pick a random one
         if ((double)this.minesweeperGame.getBombs()/this.minesweeperGame.getRemaining() < minPercent && randCords.size() > 0) {
+            // System.out.println("Why R: randBombChance= " + (double)this.minesweeperGame.getBombs()/this.minesweeperGame.getRemaining() + 
+            // "minFoundPercent= " + minPercent);
             int rand = (int)(Math.random() * randCords.size());
-            move = "r " + randCords.get(rand).toString();
+            move = "?r " + randCords.get(rand).toString();
             //System.out.println("RMove: " + move);
         }
 
@@ -132,14 +178,14 @@ public class MinesweeperSolver {
     public void createClumps() {
         int untouchedOverlap;
         for (int i = 0; i < this.squareStats.length; i++) {
-            //gets all non-null stats in the array
-            for (SquareStat stat : squareStats[i]) {
+            for (int j = 0; j < this.squareStats[0].length; j++) { //SquareStat stat : squareStats[i]) {
+                SquareStat stat = this.squareStats[i][j];
                 if (stat != null && stat.getDoConsider()) {
                     stat.clearClumps();
+                    List<Cord> untouchedCords1 = stat.getUntouched();
                     for (Cord neighbor : stat.getNeighbors()) {
-                        //So I have a square stat and im iterating through their neighbors
+                        //So I have a square stat and im iterating through their neighboring numbered tiles
                         untouchedOverlap = 0;
-                        List<Cord> untouchedCords1 = stat.getUntouched();
                         List<Cord> untouchedCords2 = this.squareStats[neighbor.getRow()][neighbor.getCol()].getUntouched();   
                         Clump clump = new Clump(stat, this.squareStats[neighbor.getRow()][neighbor.getCol()]);
                         for (Cord cord : untouchedCords1) 
@@ -149,7 +195,7 @@ public class MinesweeperSolver {
                                     clump.addToClump(cord);
                                 }
                             }
-                        if (untouchedOverlap > 0)
+                        if (untouchedOverlap > 1)
                             stat.addClump(clump);
                         //now each stat should be populated with neighboring clumps of > 1
                         
@@ -157,41 +203,41 @@ public class MinesweeperSolver {
                         //how many more nonoverlap each have and how many remaining mines.
                         //this results in clump having at least mines - nonoverlap = number of mines
                         
-                        //this.squareStats[neighbor.getRow()][neighbor.getCol()].getUntouched();
                     } // for 
+
+                    //Below does the same for "farNeighbors" with a gap between the current stat and itself;
+                    for (int k = -2; k < 3; k++)
+                        if (i + k >= 0 && i + k < squareStats.length)
+                            for (int l = -2; l < 3; l++) {
+                                if (Math.abs(k) + Math.abs(l) < 2 || j + l < 0 || j + l >= squareStats[0].length)
+                                    continue;
+                                SquareStat farNeighbor = this.squareStats[i + k][j + l];
+                                if (farNeighbor != null && farNeighbor.getDoConsider()) {
+                                    untouchedOverlap = 0;
+                                    List<Cord> farUntouchedCords = farNeighbor.getUntouched();   
+                                    Clump clump = new Clump(stat, farNeighbor);
+                                for (Cord cord : untouchedCords1) 
+                                    for (Cord cord2: farUntouchedCords) {
+                                        if (cord.equals(cord2)) {
+                                            untouchedOverlap++;
+                                            clump.addToClump(cord);
+                                        }
+                                    }
+                                if (untouchedOverlap > 0)
+                                    stat.addClump(clump);
+                                }
+
+                                
+                            }
                 } //if  
             } //for 
         }   
     } // createClumps
+    
     public void clumpToClumpCompare() {
         
-        for (int i = 0; i < this.squareStats.length; i++) {
-            //gets all non-null stats in the array
-            for (int j = 0; j < this.squareStats[0].length; j++) {
-                SquareStat stat = squareStats[i][j];
-                if (stat == null || !stat.getDoConsider()) 
-                    continue;
-                if (stat.getClumps().size() > 0) {
-                    /*for each tile with a clump check all surrounding tiles for overlapping clumps ( > 1 shared tile in clump)
-                    include tiles with one gap in between this tile and it, excluding gapped corners 
-                    (they can't share >1 tile )
-                    actually just need to check bottom half b/c starts from top left and moves down
-                    */
-                    for (int k = -2; k < 3; k ++)
-                        if (i + k >= 0 && i + k < this.squareStats.length)
-                            for (int l = 0; l < 3; l++) {
-                                if ((l == 0 && k <= 0) || (l == 2 && Math.abs(k) == 2)) //been checked already or are gapped corners
-                                    continue;
-                                if (j + l < squareStats[0].length && j + l >= 0) // out of squareStat range
-                                if (squareStats[i + k][j + l] != null && squareStats[i + k][j + l].getClumps().size() > 0) {
-                                    //check for overlap and evaluate according to clump rules in SquareStat
-                                } //if
-                            }
-
-                } // if
-            } // for in
-        } // for out
     }
+
     /*
      * Creates required statistics for squares and relationships between them.
      * @param row Row index
@@ -235,6 +281,8 @@ public class MinesweeperSolver {
 } // makeSquareStat       
 
 public String getClumpsAt(int row, int col) {
+    if (squareStats[row][col] == null)
+        return "No stats found for the index";
     List clumps = squareStats[row][col].getClumps();
     return clumps.toString() + "\n" + squareStats[row][col].toString();
 }
