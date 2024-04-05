@@ -1,6 +1,7 @@
 **Minesweeper Solver (Java)**
 
 **Overview:**
+
 Minesweeper Solver is a Java program that automates Minesweeper gameplay by employing advanced logic and algorithms. It strategically determines the best moves based on the current Minesweeper board and mine count, providing users with an efficient solution to Minesweeper puzzles.
 
 **Features:**
