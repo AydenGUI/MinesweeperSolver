@@ -10,7 +10,7 @@ Minesweeper Solver is a Java program that automates Minesweeper gameplay by empl
 * Integration of Minesweeper game within the program for seamless automation.
 * Three move solving methods: statistical analysis, clump statistics and logic, and random move determination.
 * Iterative solving until game completion, either through victory or failure of a guess.
-* Utilization of basic Java for algorithm implementation.
+* Utilizes the Java programming language for advanced algorithm implementation.
 
 **Usage:**
 
